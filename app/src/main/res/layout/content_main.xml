@@ -14,7 +14,7 @@
         android:id="@+id/swip_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-        <android.support.v7.widget.RecyclerView
+        <com.bank.widget.LoadMoreRecyclerView
             android:id="@+id/id_recyclerview"
             android:dividerHeight="10dp"
             android:elevation="0dp"

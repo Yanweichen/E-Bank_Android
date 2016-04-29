@@ -10,14 +10,12 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 
 import com.alibaba.fastjson.JSON;
@@ -26,6 +24,7 @@ import com.bank.R;
 import com.bank.adapter.RecycleAdapter;
 import com.bank.model.IndexModel;
 import com.bank.net.EBankRequest;
+import com.bank.widget.LoadMoreRecyclerView;
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -46,13 +45,13 @@ public class MainActivity extends AppCompatActivity
 
     //------------My------------------
     private static final String TAG = "MainActivity";
-    private RecyclerView recyclerView;
+    private LoadMoreRecyclerView recyclerView;
     private ArrayList<IndexModel> mDatas = new ArrayList<IndexModel>();
-    private Button button;
     private RecycleAdapter recycleAdapter;
-    private SwipeRefreshLayout swipeRefreshLayout;
+    private android.support.v4.widget.SwipeRefreshLayout swipeRefreshLayout;
     private StringCallback EntryListDataBack;
     private int page;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -84,7 +83,7 @@ public class MainActivity extends AppCompatActivity
 
         //-------------------------My-------------------------------------
         //初始化RecyclerView
-        recyclerView = (RecyclerView) findViewById(R.id.id_recyclerview);
+        recyclerView = (LoadMoreRecyclerView) findViewById(R.id.id_recyclerview);
         //设置布局管理器 线性
         //recyclerView.setLayoutManager(new LinearLayoutManager(this));
         //卡片布局
@@ -100,6 +99,7 @@ public class MainActivity extends AppCompatActivity
         // 设置item动画
 //        recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setItemAnimator(null);
+        recyclerView.setAutoLoadMoreEnable(true);
         recycleAdapter.setOnItemClickLitener(new RecycleAdapter.OnItemClickListener() {
 
             @Override
@@ -112,28 +112,33 @@ public class MainActivity extends AppCompatActivity
                 Toast.makeText(MainActivity.this, (position + 1) + " 长按点击了", Toast.LENGTH_LONG).show();
             }
         });
-        //下拉刷新
+        //初始化刷新布局
         swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swip_container);
-        //设置刷新时动画的颜色，可以设置4个
         swipeRefreshLayout.setColorSchemeResources(android.R.color.holo_blue_light, android.R.color.holo_red_light, android.R.color.holo_orange_light, android.R.color.holo_green_light);
         swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-
             @Override
             public void onRefresh() {
                 EBankRequest.getEnteryList(page, EntryListDataBack);
             }
         });
+        recyclerView.setLoadMoreListener(new LoadMoreRecyclerView.LoadMoreListener() {
+            @Override
+            public void onLoadMore() {
+                page++;
+                EBankRequest.getEnteryList(page, EntryListDataBack);
+            }
+        });
         //请求数据
         InitDataBack();
-        EBankRequest.getEnteryList(page,EntryListDataBack);
+        EBankRequest.getEnteryList(page, EntryListDataBack);
     }
-    
-    private void InitDataBack(){
+
+    private void InitDataBack() {
         EntryListDataBack = new StringCallback() {
             @Override
             public void onError(Call call, Exception e) {
                 Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "onError: "+e.getMessage());
+                Log.d(TAG, "onError: " + e.getMessage());
             }
 
             @Override
@@ -143,7 +148,8 @@ public class MainActivity extends AppCompatActivity
                 if (page == 0) {
                     mDatas.clear();
                 }
-                mDatas.addAll(JSON.parseArray(jo.getJSONArray("rows").toJSONString(), IndexModel.class)) ;
+                recyclerView.notifyMoreFinish(true);
+                mDatas.addAll(JSON.parseArray(jo.getJSONArray("rows").toJSONString(), IndexModel.class));
                 recycleAdapter.notifyDataSetChanged();
             }
         };
@@ -254,4 +260,5 @@ public class MainActivity extends AppCompatActivity
 //                break;
 //        }
     }
+
 }
