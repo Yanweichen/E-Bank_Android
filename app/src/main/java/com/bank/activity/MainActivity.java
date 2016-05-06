@@ -12,15 +12,14 @@ import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -29,9 +28,11 @@ import com.alibaba.fastjson.JSONObject;
 import com.bank.R;
 import com.bank.adapter.RecycleAdapter;
 import com.bank.model.IndexModel;
+import com.bank.model.UserModel;
 import com.bank.net.EBankRequest;
-import com.bank.widget.CustomDialog;
+import com.bank.util.SharedPreferencesFactory;
 import com.bank.widget.LoadMoreRecyclerView;
+import com.bank.widget.LoginDialog;
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -58,7 +59,7 @@ public class MainActivity extends AppCompatActivity
     private android.support.v4.widget.SwipeRefreshLayout swipeRefreshLayout;
     private StringCallback EntryListDataBack,LoginBack;
     private int page;
-    private ImageView userface;
+    private ImageView userface,login_out;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +88,8 @@ public class MainActivity extends AppCompatActivity
         //初始化登陆按钮
         View headview = (View) navigationView.getHeaderView(0);
         userface = (ImageView) headview.findViewById(R.id.imageView);
+        login_out = (ImageView) headview.findViewById(R.id.login_out);
+        login_out.setOnClickListener(this);
         userface.setOnClickListener(this);
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -177,7 +180,22 @@ public class MainActivity extends AppCompatActivity
 
             @Override
             public void onResponse(String response) {
-                Toast.makeText(MainActivity.this, response, Toast.LENGTH_SHORT).show();
+                JSONObject jo = JSON.parseObject(response);
+                if (jo.getInteger("error")==200){
+                    UserModel um = JSON.parseObject(jo.getString("userinfo"), UserModel.class);
+
+                    SharedPreferencesFactory.
+                            getSharedPreferencesUtils(MainActivity.this,
+                                    SharedPreferencesFactory.USERINFO)
+                                        .setObject("user",um);
+//                    Log.d(TAG, SharedPreferencesFactory.
+//                            getSharedPreferencesUtils(MainActivity.this,
+//                                    SharedPreferencesFactory.USERINFO)
+//                                        .getObject("user", UserModel.class)+"");
+                }else{
+                    Toast.makeText(MainActivity.this, jo.getString("msg"), Toast.LENGTH_SHORT).show();
+                }
+
             }
         };
     }
@@ -221,7 +239,7 @@ public class MainActivity extends AppCompatActivity
         int id = item.getItemId();
 
         if (id == R.id.nav_camera) {
-            EBankRequest.login(LoginBack);
+
         } else if (id == R.id.nav_gallery) {
 
         } else if (id == R.id.nav_slideshow) {
@@ -283,19 +301,34 @@ public class MainActivity extends AppCompatActivity
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.imageView:
-                CustomDialog.Builder builder = new CustomDialog.Builder(this);
-                builder.setPositiveButton("登陆", new DialogInterface.OnClickListener() {
+                LoginDialog.Builder builder = new LoginDialog.Builder(this);
+                builder.setLoginButton(new LoginDialog.Builder.LoginButtonClickListener() {
+                    @Override
+                    public void Login(String account, String password, String code) {
+                        Log.d(TAG, "Login() called with: " + "account = [" + account + "], password = [" + password + "], code = [" + code + "]");
+                        EBankRequest.login(LoginBack,account,password,code);
+                    }
+                });
+                Dialog dialog = builder.create();
+                dialog.show();
+                break;
+            case R.id.login_out:
+                AlertDialog.Builder islogout = new AlertDialog.Builder(this);
+                islogout.setMessage("确认退出吗?");
+                islogout.setTitle("退出登陆");
+                islogout.setPositiveButton("确认", new DialogInterface.OnClickListener() {
+                    @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
                     }
                 });
-                Dialog dialog = builder.create();
-                WindowManager windowManager = getWindowManager();
-                Display display = windowManager.getDefaultDisplay();
-                WindowManager.LayoutParams lp = dialog.getWindow().getAttributes();
-                lp.width = (int)(display.getWidth()); //设置宽度
-                dialog.getWindow().setAttributes(lp);
-                dialog.show();
+                islogout.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+                islogout.create().show();
                 break;
         }
     }
