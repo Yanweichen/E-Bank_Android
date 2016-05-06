@@ -1,5 +1,8 @@
 package com.bank.activity;
 
+import android.app.Dialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -13,9 +16,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.alibaba.fastjson.JSON;
@@ -24,6 +30,7 @@ import com.bank.R;
 import com.bank.adapter.RecycleAdapter;
 import com.bank.model.IndexModel;
 import com.bank.net.EBankRequest;
+import com.bank.widget.CustomDialog;
 import com.bank.widget.LoadMoreRecyclerView;
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
@@ -49,8 +56,9 @@ public class MainActivity extends AppCompatActivity
     private ArrayList<IndexModel> mDatas = new ArrayList<IndexModel>();
     private RecycleAdapter recycleAdapter;
     private android.support.v4.widget.SwipeRefreshLayout swipeRefreshLayout;
-    private StringCallback EntryListDataBack;
+    private StringCallback EntryListDataBack,LoginBack;
     private int page;
+    private ImageView userface;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,7 +84,10 @@ public class MainActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
-
+        //初始化登陆按钮
+        View headview = (View) navigationView.getHeaderView(0);
+        userface = (ImageView) headview.findViewById(R.id.imageView);
+        userface.setOnClickListener(this);
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
@@ -104,7 +115,10 @@ public class MainActivity extends AppCompatActivity
 
             @Override
             public void onItemClick(View view, int position) {
-                Toast.makeText(MainActivity.this, (position + 1) + " 点击了", Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(MainActivity.this,EntryDetailsActivity.class);
+                intent.putExtra("index_content",mDatas.get(position).getIndex_content());
+                intent.putExtra("index_title",mDatas.get(position).getIndex_title());
+                startActivity(intent);
             }
 
             @Override
@@ -151,6 +165,19 @@ public class MainActivity extends AppCompatActivity
                 recyclerView.notifyMoreFinish(true);
                 mDatas.addAll(JSON.parseArray(jo.getJSONArray("rows").toJSONString(), IndexModel.class));
                 recycleAdapter.notifyDataSetChanged();
+           }
+        };
+
+        LoginBack = new StringCallback(){
+            @Override
+            public void onError(Call call, Exception e) {
+                Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_SHORT).show();
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(String response) {
+                Toast.makeText(MainActivity.this, response, Toast.LENGTH_SHORT).show();
             }
         };
     }
@@ -194,7 +221,7 @@ public class MainActivity extends AppCompatActivity
         int id = item.getItemId();
 
         if (id == R.id.nav_camera) {
-            // Handle the camera action
+            EBankRequest.login(LoginBack);
         } else if (id == R.id.nav_gallery) {
 
         } else if (id == R.id.nav_slideshow) {
@@ -254,11 +281,23 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onClick(View v) {
-//        switch (v.getId()) {
-//            case R.id.:
-//                recycleAdapter.addData(1);
-//                break;
-//        }
+        switch (v.getId()) {
+            case R.id.imageView:
+                CustomDialog.Builder builder = new CustomDialog.Builder(this);
+                builder.setPositiveButton("登陆", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+                Dialog dialog = builder.create();
+                WindowManager windowManager = getWindowManager();
+                Display display = windowManager.getDefaultDisplay();
+                WindowManager.LayoutParams lp = dialog.getWindow().getAttributes();
+                lp.width = (int)(display.getWidth()); //设置宽度
+                dialog.getWindow().setAttributes(lp);
+                dialog.show();
+                break;
+        }
     }
 
 }
